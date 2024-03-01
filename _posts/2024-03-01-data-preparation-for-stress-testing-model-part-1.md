@@ -3,7 +3,7 @@ title: "Data preparation for stress testing model, part 1"
 date: 2024-03-01
 ---
 
-Fed released stress testing scenarios, and I thought it was an interesting opportunity to try deep learning models to forecast with these scenarios. Particularly, sequence-to-sequence models are good candidates to use in this setting since both historical and scenario data are time series.
+Fed released <a href="https://www.federalreserve.gov/supervisionreg/dfa-stress-tests-2024.htm">stress testing</a> scenarios, and I thought it was an interesting opportunity to try deep learning models to forecast with these scenarios. Particularly, sequence-to-sequence models are good candidates to use in this setting since both historical and scenario data are time series.
 
 The historical data is a quarterly time series of important macroeconomic variables, such as Treasury rates, GDP, etc. Fed provides two scenarios, base and severely adverse, which have the same time step and macroeconomic variables.
 
