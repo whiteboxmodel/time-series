@@ -72,18 +72,21 @@ def prepare_data(d: pd.DataFrame) -> pd.DataFrame:
     return d
 ```
 
-Let's call this function
+Let's call this function and do some checks on the data to ensure it is in good shape.
 
 ```Python3
+# We downloaded the historical data file and saved it into a folder
 d = pd.read_csv('../Data/2024-Table_2A_Historic_Domestic.csv')
 d = prepare_data(d)
 
-print(d.columns.values)
-print(d.shape)
-print('N/A count: {}'.format(d.isna().sum().sum()))
-print(d.describe())
+print(d.columns.values) # Column names
+print(d.shape) # Data dimensions
+print('N/A count: {}'.format(d.isna().sum().sum())) # Number of missing
+print(d.describe()) # Descriptive statistics
 
 d.to_csv('../Data/historical_data_processed_2024.csv', index = False)
 ```
 
 Later, we will use the same function for scenario preprocessing.
+
+Next, we need to shape the data to make it ready for sequence-to-sequence model training.
