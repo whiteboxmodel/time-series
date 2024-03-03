@@ -12,6 +12,26 @@ $$(x_0, x_1, x_2, x_3), (y_0, y_1, y_2, y_3)$$
 $$(x_1, x_2, x_3, x_4), (y_1, y_2, y_3, y_4)$$
 $$(x_2, x_3, x_4, x_5), (y_2, y_3, y_4, y_5)$$
 $$...$$
-Here, each sequence for $x$ variable is essentially a $4\times N$ matrix, where the first index (or dimension) represents the time steps, and the second index is one of the variables at a time step. Although each $y$ sequence is a vector, we will represent it as a one-column $4\times 1$ matrix as well to better align with the data format expected in deep learning frameworks.
+Here, each sequence for $x$ variable is essentially a $4\times N$ matrix, where the first index (or dimension) represents the time steps, and the second index is one of the variables at a time step. Although each $y$ sequence is a vector, we will represent it as a one-column $4\times 1$ matrix to better align with the data format expected in deep learning frameworks.
 
-Next, given these fixed-length sequences of $x$ and $y$ variables, we need to further group them into batches (or mini-batches) since the Pytorch (and TensorFlow too) require three-dimensional batched inputs for sequence-to-sequence models. Pytorch provides Tensor data type to conveniently handle these three-dimensional data structures (Tensors can handle higher dimensions too.)
+Next, given these fixed-length sequences of $x$ and $y$ variables, we need to further group them into batches (or mini-batches) since the Pytorch (and TensorFlow too) require three-dimensional batched inputs for sequence-to-sequence models. Pytorch provides Tensor data type to conveniently handle these three-dimensional data structures (Tensors can handle any dimensions.)
+
+Let's start with a function that takes a data frame as an input and produces a list of tensors. For now, each tensor represents a batch that contains only one sequence and has a shape (1, sequence_length, data_size). Later we will group these tensors into batches of multiple sequences.
+
+```Python3
+import pandas as pd
+import numpy as np
+import random
+import torch
+
+
+def create_fixed_length_sequences(d, sequence_length):
+    list_of_sequences = []
+    for t in range(d.shape[0] - sequence_length + 1):
+        sequence = d.iloc[t:(t + sequence_length)].copy().to_numpy() # numpy array with shape (seq_len, data_dim)
+        sequence = torch.from_numpy(sequence) # tensor with shape (seq_len, data_dim)
+        sequence = torch.unsqueeze(sequence, 0) # tensor with shape (1, seq_len, data_dim)
+        list_of_sequences.append(sequence)
+    return list_of_sequences
+```
+
