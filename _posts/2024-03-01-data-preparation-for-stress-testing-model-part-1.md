@@ -54,21 +54,21 @@ def prepare_data(d: pd.DataFrame) -> pd.DataFrame:
                        'treasury_10y_rate', 'bbb_rate', 'mortgage_rate',
                        'prime_rate', 'vix']
     diff_column_names = [c + '_diff' for c in columns_to_diff]
-    d_diff = d[columns_to_diff].diff(1).rename(columns = dict(zip(columns_to_diff, diff_column_names)))
+    d_diff = d[columns_to_diff].diff(1)
+    d_diff.rename(columns = dict(zip(columns_to_diff, diff_column_names)), inplace = True)
     d = pd.concat([d, d_diff.round(2)], axis = 1)
     d.drop(columns = columns_to_diff, inplace = True)
     # Growth variables
     columns_to_growth = ['dwcf', 'hpi', 'crei']
     growth_column_names = [c + '_growth' for c in columns_to_growth]
     d_growth = 100.0 * d[columns_to_growth].diff(1) / d[columns_to_growth].shift(1)
-    d_growth.rename(columns = dict(zip(column_names, diff_column_names)), inplace = True)
+    d_growth.rename(columns = dict(zip(columns_to_growth, growth_column_names)), inplace = True)
     d = pd.concat([d, d_growth.round(2)], axis = 1)
     d.drop(columns = columns_to_growth, inplace = True)
     d.dropna(inplace = True)
     # One-hot encoding for quarters
     d['quarter'] = d['date'].str[-2:].str.lower()
     d = pd.get_dummies(d, columns = ['quarter'], prefix = [''], prefix_sep = '', dtype = float)
-    
     return d
 ```
 
