@@ -89,4 +89,4 @@ d.to_csv('../Data/historical_data_processed_2024.csv', index = False)
 
 Later, we will use the same function for scenario preprocessing.
 
-Next, we need to shape the data to make it ready for sequence-to-sequence model training.
+So far we have performed only some data manipulations. Next, we need to structure the data to make it ready for sequence-to-sequence model training.
