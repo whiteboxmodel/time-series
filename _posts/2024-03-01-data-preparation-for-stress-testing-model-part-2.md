@@ -52,3 +52,19 @@ def batch_sequences(list_of_sequences, batch_size):
         list_of_batched_sequences.append(batched_sequence)
     return list_of_batched_sequences
 ```
+We will need a large number of sequences to train a deep learning model. The historical quarterly time series data covers 1990-2023 period, which is essentially $33 \times 4 = 132$ time steps (we will need to allocate some part of it to the test set.) For a sequence length of 4, we will end up with 129 sequences which is quite a small training set for deep learning models.
+
+To alleviate this deficiency, we will produce more sequences by varying the sequence length. For example, after producing 4-length sequences, we will produce 5-length sequences, then 6, etc. This will allow us to generate a relatively larger training set. Note that, we can batch together only the sequences of the same length (we can't batch a 4-length sequence with a 6-length sequence.)
+
+The function below generates multi-length batched sequences given a time series (data frame), sequence lengths, and batch size.
+
+```Python3
+def create_batched_sequences(d, sequence_lengths, batch_size):
+    list_of_all_sequences = []
+    for sequence_length in sequence_lengths:
+        list_of_sequences = create_fixed_length_sequences(d, sequence_length)
+        random.shuffle(list_of_sequences)
+        list_of_batched_sequences = batch_sequences(list_of_sequences, batch_size)
+        list_of_all_sequences += list_of_batched_sequences
+    return list_of_all_sequences
+```
