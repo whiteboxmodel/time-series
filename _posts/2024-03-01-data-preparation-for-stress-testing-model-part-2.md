@@ -60,14 +60,19 @@ We will produce more sequences to alleviate this deficiency by varying the seque
 The function below implements the idea of generating multiple-length sequences and their batching given a time series (data frame), a list of sequence lengths, and a batch size.
 
 ```Python3
-def create_batched_sequences(d, sequence_lengths, batch_size):
-    list_of_all_sequences = []
+def create_batched_sequences(X, y, sequence_lengths, batch_size):
+    list_of_xy_sequences = []
     for sequence_length in sequence_lengths:
-        list_of_sequences = create_fixed_length_sequences(d, sequence_length)
-        random.shuffle(list_of_sequences)
-        list_of_batched_sequences = batch_sequences(list_of_sequences, batch_size)
-        list_of_all_sequences += list_of_batched_sequences
-    return list_of_all_sequences
+        list_of_x_sequences = create_fixed_length_sequences(X, sequence_length)
+        list_of_y_sequences = create_fixed_length_sequences(y, sequence_length)
+        random_order = list(range(len(list_of_x_sequences)))
+        random.shuffle(random_order)
+        list_of_x_sequences = [list_of_x_sequences[i] for i in random_order]
+        list_of_y_sequences = [list_of_y_sequences[i] for i in random_order]
+        list_of_batched_x_sequences = batch_sequences(list_of_x_sequences, batch_size)
+        list_of_batched_y_sequences = batch_sequences(list_of_y_sequences, batch_size)
+        list_of_xy_sequences += list(zip(list_of_batched_x_sequences, list_of_batched_y_sequences))
+    return list_of_xy_sequences
 ```
 
 Noticed that the function randomly shuffles the list of same-length sequences before batching them. To make the result reproducible, we need to set the seed before calling this function. Since we will be using PyTorch to train models, let's implement a function that sets the seed for all packages we may use.
