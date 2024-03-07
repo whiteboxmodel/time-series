@@ -82,11 +82,22 @@ d = prepare_data(d)
 print(d.columns.values) # Column names
 print(d.shape) # Data dimensions
 print('N/A count: {}'.format(d.isna().sum().sum())) # Number of missing
-print(d.describe()) # Descriptive statistics
+# print(d.describe()) # Descriptive statistics
 
 d.to_csv('../Data/historical_data_processed_2024.csv', index = False)
 ```
+Output:
 
-Later, we will use the same function for scenario preprocessing.
+```
+['date' 'real_disp_inc_growth' 'real_gdp_growth' 'unemployment_rate'
+ 'cpi_inflation_rate' 'treasury_3m_rate_diff' 'treasury_5y_rate_diff'
+ 'treasury_10y_rate_diff' 'bbb_rate_diff' 'mortgage_rate_diff'
+ 'prime_rate_diff' 'vix_diff' 'dwcf_growth' 'hpi_growth' 'crei_growth'
+ 'q1' 'q2' 'q3' 'q4']
+(135, 19)
+N/A count: 0
+```
+
+Later, we will use this data preparation function for scenario preprocessing.
 
 So far we have performed only some data manipulations. Next, we need to structure the data to make it ready for sequence-to-sequence model training.
