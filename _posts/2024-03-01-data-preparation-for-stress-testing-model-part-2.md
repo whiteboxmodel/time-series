@@ -60,10 +60,10 @@ We will produce more sequences to alleviate this deficiency by varying the seque
 The function below implements the idea of generating multiple-length sequences and their batching given a time series (data frame), a list of sequence lengths, and a batch size.
 
 ```Python3
-def create_batched_sequences(X, y, sequence_lengths, batch_size):
+def create_batched_sequences(x, y, sequence_lengths, batch_size):
     list_of_xy_sequences = []
     for sequence_length in sequence_lengths:
-        list_of_x_sequences = create_fixed_length_sequences(X, sequence_length)
+        list_of_x_sequences = create_fixed_length_sequences(x, sequence_length)
         list_of_y_sequences = create_fixed_length_sequences(y, sequence_length)
         random_order = list(range(len(list_of_x_sequences)))
         random.shuffle(random_order)
@@ -89,3 +89,51 @@ def set_all_seeds(seed: int) -> None:
     # Set a fixed value for the hash seed
     os.environ["PYTHONHASHSEED"] = str(seed)
 ```
+
+Now let's put everything together. we will use the preprocessed file from the <a href="2024-03-01-data-preparation-for-stress-testing-model-part-1.md">part 1</a> to demonstrate how the data sequencing works. For training data, we will create sequences of 4, 5, and 6 lengths (we will use longer sequences later.)
+
+```Python3
+import pandas as pd
+import torch
+from make_sequences import *
+
+
+d = pd.read_csv('../Data/historical_data_processed_2024.csv')
+
+x_columns = ['real_gdp_growth', 'unemployment_rate', 'cpi_inflation_rate',
+             'treasury_3m_rate_diff', 'treasury_5y_rate_diff', 'treasury_10y_rate_diff',
+             'bbb_rate_diff', 'mortgage_rate_diff', 'prime_rate_diff', 'vix_diff',
+             'dwcf_growth', 'hpi_growth', 'crei_growth',
+             'q1', 'q2', 'q3', 'q4']
+y_columns = ['real_disp_inc_growth']
+
+d_train = d.iloc[:-4]
+d_test = d.iloc[-4:] # last 4 quarters are for testing
+xy_train = create_batched_sequences(d_train[x_columns], d_train[y_columns],
+                                    sequence_lengths = [4, 5, 6], batch_size = 2)
+xy_test = create_batched_sequences(d_test[x_columns], d_test[y_columns],
+                                          sequence_lengths = [4], batch_size = 1)
+
+print(f'Mini-batches in the training set: {len(xy_train)}')
+# Each item of the list is a tuple of x and y mini-batches
+print(f'Item (tuple) size in the training set: {len(xy_train[0])}')
+print(f'Shape of the first x mini-batch (tensor): {xy_train[0][0].shape}')
+print(f'Shape of the first y mini-batch (tensor): {xy_train[0][1].shape}')
+print(f'Shape of the last x mini-batch (tensor): {xy_train[-1][0].shape}')
+print(f'Shape of the last y mini-batch (tensor): {xy_train[-1][1].shape}')
+
+print(f'Mini-batches in test set: {len(xy_test)}')
+```
+
+Output:
+
+```
+Mini-batches in the training set: 186
+Item (tuple) size in the training set: 2
+Shape of the first x mini-batch (tensor): torch.Size([2, 4, 17])
+Shape of the first y mini-batch (tensor): torch.Size([2, 4, 1])
+Shape of the last x mini-batch (tensor): torch.Size([2, 12, 17])
+Shape of the last y mini-batch (tensor): torch.Size([2, 12, 1])
+Mini-batches in test set: 1
+```
+
