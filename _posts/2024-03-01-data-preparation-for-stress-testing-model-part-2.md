@@ -21,6 +21,7 @@ Let's start with a function that takes a time series (either $x$ or $y$) as an i
 ```Python3
 import pandas as pd
 import numpy as np
+import os
 import random
 import torch
 
@@ -52,11 +53,11 @@ def batch_sequences(list_of_sequences, batch_size):
         list_of_batched_sequences.append(batched_sequence)
     return list_of_batched_sequences
 ```
-We will need a large number of sequences to train a deep learning model. The historical quarterly time series data covers 1990-2023 period, which is essentially $33 \times 4 = 132$ time steps (we will need to allocate some part of it to the test set.) For a sequence length of 4, we will end up with 129 sequences which is quite a small training set for deep learning models.
+We will need many sequences to train a deep learning model. The historical quarterly time series data covers 1990-2023 period (33 years), which is essentially $33 \times 4 = 132$ time steps (and we still need to allocate some part of it to the test set.) By slicing it into sequences of length 4, we will end up with 129 sequences which is quite a small training set for deep learning models.
 
-To alleviate this deficiency, we will produce more sequences by varying the sequence length. For example, after producing 4-length sequences, we will produce 5-length sequences, then 6, etc. This will allow us to generate a relatively larger training set. Note that, we can batch together only the sequences of the same length (we can't batch a 4-length sequence with a 6-length sequence.)
+We will produce more sequences to alleviate this deficiency by varying the sequence length. For example, after producing 4-length sequences, we will produce 5-length sequences, then 6, etc. This will allow us to generate a relatively large training set. Note that, when it comes to batching, we can batch together only the sequences of the same length (we can't batch a 4-length sequence with a 6-length sequence.)
 
-The function below generates multi-length batched sequences given a time series (data frame), sequence lengths, and batch size.
+The function below implements the idea of generating multiple-length sequences and their batching given a time series (data frame), a list of sequence lengths, and a batch size.
 
 ```Python3
 def create_batched_sequences(d, sequence_lengths, batch_size):
@@ -67,4 +68,19 @@ def create_batched_sequences(d, sequence_lengths, batch_size):
         list_of_batched_sequences = batch_sequences(list_of_sequences, batch_size)
         list_of_all_sequences += list_of_batched_sequences
     return list_of_all_sequences
+```
+
+Noticed that the function randomly shuffles the list of same-length sequences before batching them. To make the result reproducible, we need to set the seed before calling this function. Since we will be using PyTorch to train models, let's implement a function that sets the seed for all packages we may use.
+
+```Python3
+def set_all_seeds(seed: int) -> None:
+    np.random.seed(seed)
+    random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    # In case running on the CuDNN backend
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    # Set a fixed value for the hash seed
+    os.environ["PYTHONHASHSEED"] = str(seed)
 ```
