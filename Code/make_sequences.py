@@ -28,10 +28,10 @@ def batch_sequences(list_of_sequences, batch_size):
     return list_of_batched_sequences
 
 
-def create_batched_sequences(X, y, sequence_lengths, batch_size):
+def create_batched_sequences(x, y, sequence_lengths, batch_size):
     list_of_xy_sequences = []
     for sequence_length in sequence_lengths:
-        list_of_x_sequences = create_fixed_length_sequences(X, sequence_length)
+        list_of_x_sequences = create_fixed_length_sequences(x, sequence_length)
         list_of_y_sequences = create_fixed_length_sequences(y, sequence_length)
         random_order = list(range(len(list_of_x_sequences)))
         random.shuffle(random_order)
