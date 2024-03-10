@@ -54,21 +54,21 @@ def prepare_data(d: pd.DataFrame) -> pd.DataFrame:
                        'treasury_10y_rate', 'bbb_rate', 'mortgage_rate',
                        'prime_rate', 'vix']
     diff_column_names = [c + '_diff' for c in columns_to_diff]
-    d_diff = d[columns_to_diff].diff(1).rename(columns = dict(zip(columns_to_diff, diff_column_names)))
+    d_diff = d[columns_to_diff].diff(1)
+    d_diff.rename(columns = dict(zip(columns_to_diff, diff_column_names)), inplace = True)
     d = pd.concat([d, d_diff.round(2)], axis = 1)
     d.drop(columns = columns_to_diff, inplace = True)
     # Growth variables
     columns_to_growth = ['dwcf', 'hpi', 'crei']
     growth_column_names = [c + '_growth' for c in columns_to_growth]
     d_growth = 100.0 * d[columns_to_growth].diff(1) / d[columns_to_growth].shift(1)
-    d_growth.rename(columns = dict(zip(column_names, diff_column_names)), inplace = True)
+    d_growth.rename(columns = dict(zip(columns_to_growth, growth_column_names)), inplace = True)
     d = pd.concat([d, d_growth.round(2)], axis = 1)
     d.drop(columns = columns_to_growth, inplace = True)
     d.dropna(inplace = True)
     # One-hot encoding for quarters
     d['quarter'] = d['date'].str[-2:].str.lower()
     d = pd.get_dummies(d, columns = ['quarter'], prefix = [''], prefix_sep = '', dtype = float)
-    
     return d
 ```
 
@@ -82,11 +82,22 @@ d = prepare_data(d)
 print(d.columns.values) # Column names
 print(d.shape) # Data dimensions
 print('N/A count: {}'.format(d.isna().sum().sum())) # Number of missing
-print(d.describe()) # Descriptive statistics
+# print(d.describe()) # Descriptive statistics
 
 d.to_csv('../Data/historical_data_processed_2024.csv', index = False)
 ```
+Output:
 
-Later, we will use the same function for scenario preprocessing.
+```
+['date' 'real_disp_inc_growth' 'real_gdp_growth' 'unemployment_rate'
+ 'cpi_inflation_rate' 'treasury_3m_rate_diff' 'treasury_5y_rate_diff'
+ 'treasury_10y_rate_diff' 'bbb_rate_diff' 'mortgage_rate_diff'
+ 'prime_rate_diff' 'vix_diff' 'dwcf_growth' 'hpi_growth' 'crei_growth'
+ 'q1' 'q2' 'q3' 'q4']
+(135, 19)
+N/A count: 0
+```
 
-Next, we need to shape the data to make it ready for sequence-to-sequence model training.
+Later, we will use this data preparation function for scenario preprocessing.
+
+So far we have performed only some data manipulations. Next, we need to structure the data to make it ready for sequence-to-sequence model training.
