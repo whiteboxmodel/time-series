@@ -1,5 +1,6 @@
 ---
 title: "Data preparation for stress testing model, part 2"
+categories: [Stress-testing, time-series, Sequence-to-sequence, Deep-learning, PyTorch]
 date: 2024-03-02
 ---
 

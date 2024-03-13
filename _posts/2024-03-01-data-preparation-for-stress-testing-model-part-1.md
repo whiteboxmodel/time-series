@@ -1,5 +1,6 @@
 ---
 title: "Data preparation for stress testing model, part 1"
+categories: [Stress-testing, FRB, time-series]
 date: 2024-03-01
 ---
 
