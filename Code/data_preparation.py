@@ -23,7 +23,7 @@ def prepare_data(d: pd.DataFrame) -> pd.DataFrame:
                     'House Price Index (Level)': 'hpi',
                     'Commercial Real Estate Price Index (Level)': 'crei',
                     'Market Volatility Index (Level)': 'vix'}
-    d.rename(columns = column_names, inplace = True)
+    d = d.rename(columns = column_names)
     # Keep only the columns we need
     keep_columns = ['date', 'real_disp_inc_growth', 'real_gdp_growth', 'unemployment_rate',
                     'cpi_inflation_rate', 'treasury_3m_rate', 'treasury_5y_rate',
