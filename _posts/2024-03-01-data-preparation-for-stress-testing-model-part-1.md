@@ -112,11 +112,12 @@ Output:
 
 ```
 ['date' 'real_disp_inc_growth' 'real_gdp_growth' 'unemployment_rate'
- 'cpi_inflation_rate' 'treasury_3m_rate_diff' 'treasury_5y_rate_diff'
- 'treasury_10y_rate_diff' 'bbb_rate_diff' 'mortgage_rate_diff'
- 'vix_diff' 'dwcf_growth' 'hpi_growth' 'crei_growth'
+ 'cpi_inflation_rate' 'spread_treasury_10y_over_3m'
+ 'spread_treasury_5y_over_3m' 'treasury_3m_rate_diff'
+ 'treasury_5y_rate_diff' 'treasury_10y_rate_diff' 'bbb_rate_diff'
+ 'mortgage_rate_diff' 'vix_diff' 'dwcf_growth' 'hpi_growth' 'crei_growth'
  'q1' 'q2' 'q3' 'q4']
-(135, 19)
+(135, 20)
 N/A count: 0
 ```
 
