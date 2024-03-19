@@ -78,19 +78,35 @@ def prepare_data(d: pd.DataFrame) -> pd.DataFrame:
     return d
 ```
 
-Let's call this function and do some checks on the data to ensure it is in good shape.
+Let's call this function to prepare historical and scenario data. We will perform some basic checks on the prepared data to ensure it is in good shape.
 
 ```Python3
-# We downloaded the historical data file and saved it into a folder
-d = pd.read_csv('../Data/2024-Table_2A_Historic_Domestic.csv')
-d = prepare_data(d)
+# All data files were downloaded from https://www.federalreserve.gov/supervisionreg/dfa-stress-tests-2024.htm
+# Historical data
+d_hist = pd.read_csv('../Data/2024-Table_2A_Historic_Domestic.csv')
+d = prepare_data(d_hist)
 
-print(d.columns.values) # Column names
-print(d.shape) # Data dimensions
-print('N/A count: {}'.format(d.isna().sum().sum())) # Number of missing
-# print(d.describe()) # Descriptive statistics
+print(d.columns.values)
+print(d.shape)
+print('N/A count: {}'.format(d.isna().sum().sum()))
 
 d.to_csv('../Data/historical_data_processed_2024.csv', index = False)
+d.describe().T.to_csv('../Data/historical_data_processed_2024_stat.csv')
+
+
+d_hist = d_hist.tail(16) # Recent history is needed to prepare and forecast the scenarios
+# Scenarios
+scenario_files = {'Base': '2024-Table_3A_Supervisory_Baseline_Domestic.csv',
+                  'SA': '2024-Table_4A_Supervisory_Severely_Adverse_Domestic.csv'}
+for scenario in scenario_files.keys():
+    d = pd.read_csv('../Data/' + scenario_files[scenario])
+    d = pd.concat([d_hist, d], ignore_index = True)
+    d = prepare_data(d)
+    print(d.shape)
+    print('N/A count: {}'.format(d.isna().sum().sum()))
+    d.to_csv(f'../Data/{scenario}_data_processed_2024.csv', index = False)
+    d.describe().T.to_csv(f'../Data/{scenario}_data_processed_2024_stat.csv')
+
 ```
 Output:
 
@@ -103,7 +119,5 @@ Output:
 (135, 19)
 N/A count: 0
 ```
-
-Later, we will use this data preparation function for scenario preprocessing.
 
 So far we have performed only some data manipulations. Next, we need to structure the data to make it ready for sequence-to-sequence model training.
