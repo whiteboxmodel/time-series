@@ -6,7 +6,7 @@ date: 2024-03-02
 
 We will use preprocessed time series data from <a href="2024-03-01-data-preparation-for-stress-testing-model-part-1.md">part 1</a> to create the training and testing data for deep learning sequence-to-sequence models.
 
-In the context of the stress testing, we need to predict $y_1, y_2, ..., y_T$ given a hypothetical scenario $x_1, x_2, ..., x_T$. To make things more specific, here $y_t$ is a scalar representing the disposable income growth at time $t$, and $x_t$ is a vector of all other variables (GDP, Treasury rates, etc.) at time $t$. We will denote $N$ to be the size of the vector $x_t$.
+In the context of the stress testing, we need to predict $y_1, y_2, ..., y_T$ given a hypothetical scenario $x_1, x_2, ..., x_T$. To make things more specific, here $y_t$ is a scalar representing the unemployment at time $t$, and $x_t$ is a vector of all other variables (GDP, Treasury rates, etc.) at time $t$. We will denote $N$ to be the size of the vector $x_t$.
 
 We need to structure the historical data to reflect the setting needed for predicting with stress-testing models. We will slice the historical data into sequences using a fixed-length sliding window. For example, with a window size of 4, we will create the following sequences:
 $$(x_0, x_1, x_2, x_3), (y_0, y_1, y_2, y_3)$$
@@ -101,7 +101,7 @@ def set_all_seeds(seed: int) -> None:
     os.environ["PYTHONHASHSEED"] = str(seed)
 ```
 
-Now let's put everything together. we will use the preprocessed file from the <a href="2024-03-01-data-preparation-for-stress-testing-model-part-1.md">part 1</a> to demonstrate how the data sequencing works. For training data, we will create sequences of 4, 5, and 6 lengths (we will use longer sequences later.)
+Now let's put everything together. we will use the preprocessed file from the <a href="2024-03-01-data-preparation-for-stress-testing-model-part-1.md">part 1</a> to demonstrate how the data sequencing works. In the example code below, we will create sequences of 2, 4, and 6 lengths (we may use different lengths later.)
 
 ```Python3
 import pandas as pd
@@ -111,17 +111,18 @@ from make_sequences import *
 
 d = pd.read_csv('../Data/historical_data_processed_2024.csv')
 
-x_columns = ['real_gdp_growth', 'unemployment_rate', 'cpi_inflation_rate',
+x_columns = ['real_disp_inc_growth', 'real_gdp_growth', 'cpi_inflation_rate',
+             'spread_treasury_10y_over_3m', 'spread_treasury_5y_over_3m',
              'treasury_3m_rate_diff', 'treasury_5y_rate_diff', 'treasury_10y_rate_diff',
-             'bbb_rate_diff', 'mortgage_rate_diff', 'prime_rate_diff', 'vix_diff',
+             'bbb_rate_diff', 'mortgage_rate_diff', 'vix_diff',
              'dwcf_growth', 'hpi_growth', 'crei_growth',
              'q1', 'q2', 'q3', 'q4']
-y_columns = ['real_disp_inc_growth']
+y_columns = ['unemployment_rate']
 
 d_train = d.iloc[:-4]
 d_test = d.iloc[-4:] # last 4 quarters are for testing
 xy_train = create_batched_sequences(d_train[x_columns], d_train[y_columns],
-                                    sequence_lengths = [4, 5, 6], batch_size = 2)
+                                    sequence_lengths = [2, 4, 6], batch_size = 2)
 xy_test = create_batched_sequences(d_test[x_columns], d_test[y_columns],
                                    sequence_lengths = [4], batch_size = 1)
 
@@ -139,13 +140,13 @@ print(f'Mini-batches in test set: {len(xy_test)}')
 Output:
 
 ```
-Mini-batches in the training set: 186
+Mini-batches in the training set: 192
 Item (tuple) size in the training set: 2
-Shape of the first x mini-batch (tensor): torch.Size([2, 4, 17])
+Shape of the first x mini-batch (tensor): torch.Size([2, 4, 18])
 Shape of the first y mini-batch (tensor): torch.Size([2, 4, 1])
-Shape of the last x mini-batch (tensor): torch.Size([2, 12, 17])
-Shape of the last y mini-batch (tensor): torch.Size([2, 12, 1])
+Shape of the last x mini-batch (tensor): torch.Size([2, 2, 18])
+Shape of the last y mini-batch (tensor): torch.Size([2, 2, 1])
 Mini-batches in test set: 1
 ```
 
-In the next post, we will train a simple LSTM-based model to forecast real disposable income growth.
+In the next post, we will build a benchmark linear model. Then, we will explore several sequence-to-sequence models (such as LSTM-based) which should perform better than the linear model.
