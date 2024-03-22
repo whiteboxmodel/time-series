@@ -34,3 +34,28 @@ d_test = d.iloc[-4:] # last 4 quarters are for testing
 ```
 
 In theory, we need a separate validation set to control overfitting as well as to perform hyperparameter tuning, however, since the data is short, we will reuse the test set as a validation set.
+
+Now, let's format the training and testing data to use for model training:
+
+```Python3
+set_all_seeds(1)
+xy_train = create_batched_sequences(d_train[x_columns], d_train[y_columns],
+                                    sequence_lengths = [1], batch_size = 4)
+xy_test = create_batched_sequences(d_test[x_columns], d_test[y_columns],
+                                   sequence_lengths = [1], batch_size = 4)
+```
+
+The x variables in the training/testing data are formatted into a `(4, 1, data_size)` shape, where 4 is the batch size, 1 is the sequence length (essentially each observation is considered independently of its previous ones), and `data_size` is the number of x variables (features). Similarly, the y variable is formatted into a `(4, 1, 1)` shape (the last dimension is 1 since we are predicting only the unemployment rate).
+
+We will use the PyTorch framework to define the linear regression model and then train it:
+
+```Python3
+class LinearModel(torch.nn.Module):
+    def __init__(self, x_size):
+        super(LinearModel, self).__init__()
+        self.linear = torch.nn.Linear(x_size, 1)
+    
+    def forward(self, x):
+        out = self.linear(x)
+        return out
+```
