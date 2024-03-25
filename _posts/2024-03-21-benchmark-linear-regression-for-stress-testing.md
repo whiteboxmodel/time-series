@@ -156,4 +156,26 @@ Epoch 599, train loss - 1.165, test loss - 0.223
 
 And here is the plot for training and test (the same as validation) loss:
 
-![Training and validation loss for the linear regression model](Charts/Linear_regression_training_and_validation_loss.png)
+![Training and validation loss for the linear regression model](../Charts/Linear_regression_training_and_validation_loss.png)
+
+The training output and the chart show that both training and test loss curves are flattened at the end of the training which means that the linear model cannot improve any further with the given settings. Note that we may be able to achieve a lower loss by trying out different learning rates (`lr` parameter in `torch.optim.Adam`) and batch sizes (`batch_size` parameter in `create_batched_sequences`). We will look into hyperparameter tuning to do this in a later post.
+
+Not let's predict the unemployment rate on the entire historical data. To do it, we need to create model-ready data that contains both the training and testing sets. However, this time we need to preserve the chronological order of the observations since we want to plot the predictions. We will use `create_fixed_length_sequences` function to create a `(1, n, x_size)` tensor, where the first dimension is the batch size (a batch of one long sequence with the entire history), `n` is the length of the historical data, and `x_size` is the number of x variables as before.
+
+```Python3
+# Create one long array (train + test) and predict with it
+model.train(mode = False)
+x_all = create_fixed_length_sequences(d[x_columns], sequence_length = d.shape[0])[0] # take the first and only tensor from the returned list
+y_all = model(x_all)
+y_all = y_all[0, :, 0].detach().numpy()
+```
+
+Given the `(1, n, x_size)` tensor of x variables, the model returns the prediction in a `(1, n, 1)` tensor. We converted the latter into a one-dimensional numpy array.
+
+Finally, we can combine the historical and predicted unemployment rates and plot them:
+
+```Python3
+dy = d[['date'] + y_columns].copy()
+dy['pred'] = y_all
+dy.plot(x = 'date', y = ['unemployment_rate', 'pred'], grid = True, rot = 45, xlabel = '')
+```
