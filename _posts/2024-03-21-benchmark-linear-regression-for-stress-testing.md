@@ -38,7 +38,7 @@ In theory, we need a separate validation set to control overfitting and perform 
 Now, let's structure the training and testing data to use for model training:
 
 ```Python3
-set_all_seeds(1)
+set_all_seeds(1) # ensure the prepared data and overall results are reproducible
 xy_train = create_batched_sequences(d_train[x_columns], d_train[y_columns],
                                     sequence_lengths = [1], batch_size = 4)
 xy_test = create_batched_sequences(d_test[x_columns], d_test[y_columns],
@@ -77,14 +77,14 @@ Next, we define two functions to train and test the model.
 
 ```Python3
 def train_epoch(xy_train, model, loss_fn):
-    model.train(mode = True) # switch to the training mode
+    model.train(mode = True) # switch to the training mode to calculate the gradients
     total_loss = 0.0
     for x, y in xy_train:
         model.zero_grad()
-        y_hat = model(x) # preadit with the current model parameters
+        y_hat = model(x) # predict with the current model
         loss = loss_fn(y_hat, y) # calculate the loss (error) for the prediction
         loss.backward() # backpropagation - calculates gradients
-        optimizer.step() # updates gradients to reduce the loss
+        optimizer.step() # update parameters to reduce the loss
         total_loss += loss.item()
     total_loss /= len(xy_train)
     return total_loss
@@ -93,8 +93,8 @@ def test_epoch(xy_test, model, loss_fn):
     model.train(mode = False) # switch to evaluation mode, do not calculate gradients
     total_loss = 0.0
     for x, y in xy_test:
-        y_hat = model(x)
-        loss = loss_fn(y_hat, y)
+        y_hat = model(x) # predict with the current model on the test data
+        loss = loss_fn(y_hat, y) # calculate the loss (error) for the prediction
         total_loss += loss.item()
     total_loss /= len(xy_test)
     return total_loss
@@ -109,6 +109,7 @@ def train_model(xy_train, xy_test, model, loss_fn, n_epochs):
     for epoch in range(n_epochs):
         train_loss = train_epoch(xy_train, model, loss_fn)
         test_loss = test_epoch(xy_test, model, loss_fn)
+        # Keep track of the train and test losses
         train_losses.append(train_loss)
         test_losses.append(test_loss)
         train_loss, test_loss = round(train_loss, 3), round(test_loss, 3)
@@ -136,3 +137,23 @@ Now let's train the model and plot the losses:
 train_losses, test_losses = train_model(xy_train, xy_test, model, loss_fn, n_epochs)
 plot_loss_history(train_losses, test_losses)
 ```
+
+Training output (we show only a few first and last epochs):
+
+```
+Epoch 0, train loss - 34.573, test loss - 8.466
+Epoch 1, train loss - 30.097, test loss - 6.877
+Epoch 2, train loss - 26.357, test loss - 5.652
+Epoch 3, train loss - 23.218, test loss - 4.718
+Epoch 4, train loss - 20.58, test loss - 4.009
+...
+Epoch 595, train loss - 1.166, test loss - 0.224
+Epoch 596, train loss - 1.166, test loss - 0.224
+Epoch 597, train loss - 1.165, test loss - 0.224
+Epoch 598, train loss - 1.165, test loss - 0.224
+Epoch 599, train loss - 1.165, test loss - 0.223
+```
+
+And here is the plot for training and test (the same as validation) loss:
+
+![Training and validation loss for the linear regression model](Charts/Linear_regression_training_and_validation_loss.png)
