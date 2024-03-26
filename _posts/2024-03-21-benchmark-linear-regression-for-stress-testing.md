@@ -4,7 +4,7 @@ categories: [Stress-testing, time-series, linear-regression, PyTorch]
 date: 2024-03-21
 ---
 
-Let's develop a benchmark linear regression model using the data prepared in <a href="2024-03-01-data-preparation-for-stress-testing-model-part-1.md">part 1</a> and sequence preparation functions created in <a href="2024-03-01-data-preparation-for-stress-testing-model-part-2.md">part 2</a>. Note that we don't really need to structure the data into sequences with a three-dimensional `(batch_size, sequence_size, data_size)` shape for linear regression. We could have only used the `(batch_size, data_size)` shape. However, we will use the three-dimensional shape with `sequence_size = 1` to establish a framework for sequence-to-sequence models.
+Let's develop a benchmark linear regression model using the data prepared in <a href="2024-03-01-data-preparation-for-stress-testing-model-part-1.md">part 1</a> and sequence preparation functions created in <a href="2024-03-01-data-preparation-for-stress-testing-model-part-2.md">part 2</a>. Note that we don't really need to structure the data into sequences with three-dimensional `(batch_size, sequence_size, data_size)` tensors for linear regression. We could have only used the `(batch_size, data_size)` shape. However, we will use the three-dimensional tensors with `sequence_size = 1` to establish a framework for sequence-to-sequence models.
 
 We will start by loading the libraries:
 
@@ -45,9 +45,9 @@ xy_test = create_batched_sequences(d_test[x_columns], d_test[y_columns],
                                    sequence_lengths = [1], batch_size = 4)
 ```
 
-The x variables in the training/testing data are formatted into a `(4, 1, x_size)` shape, where 4 is the batch size, 1 is the sequence length (essentially each observation is considered independently of its previous ones), and `x_size` is the number of x variables (features). Similarly, the y variable is formatted into a `(4, 1, 1)` shape (the last dimension is 1 since we are predicting only the unemployment rate).
+The x variables in the training/testing data are formatted into a `(4, 1, x_size)` shape, where 4 is the batch size, 1 is the sequence length (essentially each observation is considered independently of its previous ones), and `x_size` is the number of x variables (features). Similarly, the y variable is formatted into a `(4, 1, 1)` shape where the last dimension is 1 since we are predicting only the unemployment rate.
 
-We will use the PyTorch framework to create a shallow neural network for a linear regression model:
+We will use the PyTorch framework to define a shallow neural network for a linear regression model:
 
 ```Python3
 class LinearModel(torch.nn.Module):
@@ -63,6 +63,8 @@ class LinearModel(torch.nn.Module):
 We could have created a linear regression model directly using  `torch.nn.Sequential`, however, again, to build up the framework for sequence-to-sequence models, we use a slightly longer subclassing approach. The `LinearModel` class defined above is derived from `torch.nn.Module` which is a base class for all PyTorch models. In the constructor of the `LinearModel` class, we create a linear layer with `x_size` inputs and 1 output.
 
 The `forward` function of the class performs forward pass. It only calls the linear layer to perform `W*x+b` operation where `W` and `b` are learnable (trainable) parameters.
+
+The `Linear` layer is flexible with regards to the number of dimensions in input x. It only requires the size of the last dimension to be equal to the number of input features which is `x_size` in our case. In the prepared training data, each tensor x has a shape `(4, 1, x_size)`, so the `Linear` layer  will apply `W*x+b` operation to each of the four input vectors and will output a tensor of shape `(4, 1, 1)` which matches to the shape of the y tensor of the training data.
 
 To train the model, we need to create a loss function, and an optimizer:
 
@@ -100,7 +102,7 @@ def test_epoch(xy_test, model, loss_fn):
     return total_loss
 ```
 
-These functions will be called at each epoch of the training procedure defined below:
+These two functions will be called at each epoch of the training procedure defined below:
 
 ```Python3
 def train_model(xy_train, xy_test, model, loss_fn, n_epochs):
@@ -117,7 +119,9 @@ def train_model(xy_train, xy_test, model, loss_fn, n_epochs):
     return train_losses, test_losses
 ```
 
-The model training function returns training and testing losses for each epoch. They are useful to assess how well the model is trained and if there is any evidence of overfitting or underfitting. We define a function to print the training and testing losses:
+The classical method for finding the optimal parameters of a linear model is the ordinary least squares (OLS). Here, we used gradient descent instead since we aim to establish a framework for sequence-to-sequence models.
+
+The model training function returns training and testing losses for each epoch. They are useful to assess how well the model is trained and if there is any evidence of overfitting or underfitting. We define a function to plot the training and testing losses:
 
 ```Python3
 def plot_loss_history(train_losses, val_losses):
@@ -158,9 +162,9 @@ And here is the plot for training and test (the same as validation) loss:
 
 ![Training and validation loss for the linear regression model](../Charts/Linear_regression_training_and_validation_loss.png)
 
-The training output and the chart show that both training and test loss curves are flattened at the end of the training which means that the linear model cannot improve any further with the given settings. Note that we may be able to achieve a lower loss by trying out different learning rates (`lr` parameter in `torch.optim.Adam`) and batch sizes (`batch_size` parameter in `create_batched_sequences`). We will look into hyperparameter tuning to do this in a later post.
+The training output and the chart show that both training and test loss curves are flattened at the end of the training which means that the linear model cannot improve any further with the given settings. Note that we may be able to achieve a lower loss by trying out different learning rates (`lr` parameter in `torch.optim.Adam`) and batch sizes (`batch_size` parameter in `create_batched_sequences`). We will look into hyperparameter tuning in a later post.
 
-Not let's predict the unemployment rate on the entire historical data. To do it, we need to create model-ready data that contains both the training and testing sets. However, this time we need to preserve the chronological order of the observations since we want to plot the predictions. We will use `create_fixed_length_sequences` function to create a `(1, n, x_size)` tensor, where the first dimension is the batch size (a batch of one long sequence with the entire history), `n` is the length of the historical data, and `x_size` is the number of x variables as before.
+Now let's predict the unemployment rate for the entire historical data. For this excercise, we need to preserve the chronological order of the observations since we want to plot the predictions. To achieve it, we will create a sequence of input vectors that contains both the training and testing sets. We will use `create_fixed_length_sequences` function to create a `(1, n, x_size)` tensor, where the first dimension is the batch size (a batch of one long sequence with the entire history), `n` is the length of the historical data, and `x_size` is the number of x variables as before.
 
 ```Python3
 # Create one long array (train + test) and predict with it
@@ -170,9 +174,7 @@ y_all = model(x_all)
 y_all = y_all[0, :, 0].detach().numpy()
 ```
 
-Given the `(1, n, x_size)` tensor of x variables, the model returns the prediction in a `(1, n, 1)` tensor. We converted the latter into a one-dimensional numpy array.
-
-Finally, we can combine the historical and predicted unemployment rates and plot them:
+Given the `(1, n, x_size)` tensor of x variables, the model returns the prediction in a `(1, n, 1)` tensor. We converted the latter into a one-dimensional numpy array. Finally, we can combine the historical and predicted unemployment rates and plot them:
 
 ```Python3
 dy = d[['date'] + y_columns].copy()
