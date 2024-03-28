@@ -10,4 +10,6 @@ As the Fed released FRB stress testing scenarios, we tried several deep learning
 
 <a href="_posts/2024-03-01-data-preparation-for-stress-testing-model-part-2.md">Data preparation for stress testing model, part 2</a>
 
+<a href="_posts/2024-03-21-benchmark-linear-regression-for-stress-testing.md">A benchmark linear regression</a>
+
 More coming soon.
