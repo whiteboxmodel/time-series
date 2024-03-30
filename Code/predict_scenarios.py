@@ -26,14 +26,14 @@ def predict_scenarios(scenario_data, x_columns, y_columns, model):
     return d_forecast
 
 
-def plot_scenario_forecasts(d_forecast):
+def plot_scenario_forecasts(d_forecast, y_label):
     # Base scenario
-    d_forecast.plot(x = 'date', y = ['Base_FRB', 'Base'], grid = True, rot = 45, xlabel = '',
-                    title = 'Base scenario')
+    d_forecast.plot(x = 'date', y = ['Base_FRB', 'Base'], grid = True, rot = 45,
+                    xlabel = '', ylabel = y_label, title = 'Base scenario')
     plt.tight_layout()
     plt.show()
     # Severely adverse scenario
-    d_forecast.plot(x = 'date', y = ['SA_FRB', 'SA'], grid = True, rot = 45, xlabel = '',
-                    title = 'Severely adverse scenario')
+    d_forecast.plot(x = 'date', y = ['SA_FRB', 'SA'], grid = True, rot = 45,
+                    xlabel = '', ylabel = y_label, title = 'Severely adverse scenario')
     plt.tight_layout()
     plt.show()
