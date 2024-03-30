@@ -45,7 +45,7 @@ xy_test = create_batched_sequences(d_test[x_columns], d_test[y_columns],
                                    sequence_lengths = [1], batch_size = 4)
 ```
 
-The x variables in the training/testing data are formatted into a `(4, 1, x_size)` shape, where 4 is the batch size, 1 is the sequence length (essentially each observation is considered independently of its previous ones), and `x_size` is the number of x variables (features). Similarly, the y variable is formatted into a `(4, 1, 1)` shape where the last dimension is 1 since we are predicting only the unemployment rate.
+The x variables in the training/testing data are formatted into a `(4, 1, x_size)` shape, where 4 is the batch size, 1 is the sequence length (essentially each observation is considered independently of its previous ones), and `x_size` is the number of x variables (features). Similarly, the y variable is formatted into a `(4, 1, 1)` shape where the last dimension is 1 since we predict only the unemployment rate.
 
 We will use the PyTorch framework to define a shallow neural network for a linear regression model:
 
@@ -162,9 +162,9 @@ And here is the plot for training and test (the same as validation) loss:
 
 ![Training and validation loss for the linear regression model](../Charts/Linear_regression_training_and_validation_loss.png)
 
-The training output and the chart show that both training and test loss curves are flattened at the end of the training which means that the linear model cannot improve any further with the given settings. Note that we may be able to achieve a lower loss by trying out different learning rates (`lr` parameter in `torch.optim.Adam`) and batch sizes (`batch_size` parameter in `create_batched_sequences`). We will look into hyperparameter tuning in a later post.
+The training output and the chart show that both training and test loss curves are flattened at the end of the training which means that the linear model cannot improve any further with the given settings. Note that we may achieve a lower loss by trying out different learning rates (`lr` parameter in `torch.optim.Adam`) and batch sizes (`batch_size` parameter in `create_batched_sequences`). We will look into hyperparameter tuning in a later post.
 
-Now let's predict the unemployment rate for the entire historical data. For this exercise, we need to preserve the chronological order of the observations since we want to plot the predictions. To achieve it, we will create a sequence of input vectors that contains both the training and testing sets. We will use `create_fixed_length_sequences` function to create a `(1, n, x_size)` tensor, where the first dimension is the batch size (a batch of one long sequence with the entire history), `n` is the length of the historical data, and `x_size` is the number of x variables as before.
+Now let's predict the unemployment rate for the entire historical data. For this exercise, we need to preserve the chronological order of the observations since we want to plot the predictions. To achieve this, we will create a sequence of input vectors that contains both the training and testing sets. We will use `create_fixed_length_sequences` function to create a `(1, n, x_size)` tensor, where the first dimension is the batch size (a batch of one long sequence with the entire history), `n` is the length of the historical data, and `x_size` is the number of x variables as before.
 
 ```Python3
 # Create one long array (train + test) and predict with it
@@ -186,4 +186,29 @@ plt.show()
 
 ![Training and validation loss for the linear regression model](../Charts/Linear_regression_fit.png)
 
-The last four quarters in the model fitting plot are from the test set, the rest are from the training set. To summarize, the training loss (MSE) for the linear regression is `1.165`, and the test loss is `0.223`. Lets's see if we can beat this with an LSTM model in the next post.
+The last four quarters in the model fitting plot are from the test set, the rest are from the training set. To summarize, the training loss (MSE) for the linear regression is `1.165`, and the test loss is `0.223`. In the next post, we will try to beat this with an LSTM model.
+
+Before looking into more sophisticated models, let's compare the linear model's forecasts against Fed-provided unemployment rate scenarios. A gentle reminder, that our forecast is conditional (not one step ahead forecast), which means that given the series of all other macroeconomic series, we predict the unemployment rate series.
+
+```Python3
+# Scenario prediction
+from predict_scenarios import *
+
+# These are preprocessed scenario files
+scenario_files = {'Base': '../Data/Base_data_processed_2024.csv',
+                  'SA': '../Data/SA_data_processed_2024.csv'}
+# Load scenario files into a dictionary
+d_scenarios = load_scenarios(scenario_files, start_date = '2024 Q1')
+# Predict with scenarios
+d_forecast = predict_scenarios(d_scenarios, x_columns, y_columns, model)
+# Plot each scenario
+plot_scenario_forecasts(d_forecast, y_label = 'Unemployment rate')
+```
+
+Here are the plots for FRB and linear model predicted unemployment rates for each scenario:
+
+![Linear regression base forecast](../Charts/Linear_regression_base_forecast.png)
+
+![Linear regression SA forecast](../Charts/Linear_regression_sa_forecast.png)
+
+The linear model predicted base scenario has a weird uptrend. In the severely adverse scenario, the linear model prediction is overall lower and the hump is muted compared to the FRB scenario. Let's see if we can produce a better forecast with an LSTM model.
