@@ -78,7 +78,7 @@ n_epochs = 600
 Next, we define two functions to train and test the model.
 
 ```Python3
-def train_epoch(xy_train, model, loss_fn):
+def train_epoch(xy_train, model, loss_fn, optimizer):
     model.train(mode = True) # switch to the training mode to calculate the gradients
     total_loss = 0.0
     for x, y in xy_train:
@@ -105,7 +105,7 @@ def test_epoch(xy_test, model, loss_fn):
 These two functions will be called at each epoch of the training procedure defined below:
 
 ```Python3
-def train_model(xy_train, xy_test, model, loss_fn, n_epochs):
+def train_model(xy_train, xy_test, model, loss_fn, optimizer, n_epochs):
     train_losses = []
     test_losses = []
     for epoch in range(n_epochs):
@@ -138,7 +138,7 @@ def plot_loss_history(train_losses, val_losses):
 Now let's train the model and plot the losses:
 
 ```Python3
-train_losses, test_losses = train_model(xy_train, xy_test, model, loss_fn, n_epochs)
+train_losses, test_losses = train_model(xy_train, xy_test, model, loss_fn, optimizer, n_epochs)
 plot_loss_history(train_losses, test_losses)
 ```
 
@@ -194,7 +194,7 @@ Before looking into more sophisticated models, let's compare the linear model's 
 # Scenario prediction
 from predict_scenarios import *
 
-# These are preprocessed scenario files
+# These are preprocessed scenario files (see part 1 blog)
 scenario_files = {'Base': '../Data/Base_data_processed_2024.csv',
                   'SA': '../Data/SA_data_processed_2024.csv'}
 # Load scenario files into a dictionary
@@ -211,4 +211,4 @@ Here are the plots for FRB and linear model predicted unemployment rates for eac
 
 ![Linear regression SA forecast](../Charts/Linear_regression_sa_forecast.png)
 
-The linear model predicted base scenario has a weird uptrend. In the severely adverse scenario, the linear model prediction is overall lower and the hump is muted compared to the FRB scenario. Let's see if we can produce a better forecast with an LSTM model.
+The linear model prediction for the base scenario has a weird uptrend. In the severely adverse scenario, the linear model prediction is overall lower and the hump is muted compared to the FRB scenario. Let's see if we can produce a better forecast with an LSTM model.
