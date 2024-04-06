@@ -41,9 +41,10 @@ def train_model(xy_train, xy_test, model, loss_fn, optimizer, n_epochs):
     return train_losses, test_losses
 
 
-def plot_loss_history(train_losses, val_losses):
-    plt.plot(train_losses, label = 'train_loss', color = 'blue')
-    plt.plot(val_losses, label = 'val_loss', color = 'green')
+def plot_loss_history(train_losses, val_losses, start_epoch = 0):
+    x_range = range(start_epoch, len(train_losses))
+    plt.plot(x_range, train_losses[start_epoch:], label = 'train_loss', color = 'blue')
+    plt.plot(x_range, val_losses[start_epoch:], label = 'val_loss', color = 'green')
     plt.legend()
     plt.title('Training and validation loss')
     plt.xlabel('Epochs')

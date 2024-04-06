@@ -1,8 +1,6 @@
 import pandas as pd
 
 
-print(pd.__version__)
-
 def prepare_data(d: pd.DataFrame) -> pd.DataFrame:
     # Rename columns
     column_names = {'Scenario Name': 'scenario',
@@ -28,12 +26,15 @@ def prepare_data(d: pd.DataFrame) -> pd.DataFrame:
     keep_columns = ['date', 'real_disp_inc_growth', 'real_gdp_growth', 'unemployment_rate',
                     'cpi_inflation_rate', 'treasury_3m_rate', 'treasury_5y_rate',
                     'treasury_10y_rate', 'bbb_rate', 'mortgage_rate',
-                    'prime_rate', 'dwcf', 'hpi', 'crei', 'vix']
+                    'dwcf', 'hpi', 'crei', 'vix']
     d = d[keep_columns]
+    # Variables for steepness of yield curve
+    d['spread_treasury_10y_over_3m'] = d['treasury_10y_rate'] - d['treasury_3m_rate']
+    d['spread_treasury_5y_over_3m'] = d['treasury_5y_rate'] - d['treasury_3m_rate']
     # First-order difference variables
     columns_to_diff = ['treasury_3m_rate', 'treasury_5y_rate',
                        'treasury_10y_rate', 'bbb_rate', 'mortgage_rate',
-                       'prime_rate', 'vix']
+                       'vix']
     diff_column_names = [c + '_diff' for c in columns_to_diff]
     d_diff = d[columns_to_diff].diff(1)
     d_diff.rename(columns = dict(zip(columns_to_diff, diff_column_names)), inplace = True)
@@ -51,15 +52,3 @@ def prepare_data(d: pd.DataFrame) -> pd.DataFrame:
     d['quarter'] = d['date'].str[-2:].str.lower()
     d = pd.get_dummies(d, columns = ['quarter'], prefix = [''], prefix_sep = '', dtype = float)
     return d
-
-
-# Downloaded from https://www.federalreserve.gov/supervisionreg/files/2024-Table_2A_Historic_Domestic.csv
-d = pd.read_csv('../Data/2024-Table_2A_Historic_Domestic.csv')
-d = prepare_data(d)
-
-print(d.columns.values)
-print(d.shape)
-print('N/A count: {}'.format(d.isna().sum().sum()))
-
-d.to_csv('../Data/historical_data_processed_2024.csv', index = False)
-d.describe().to_csv('../Data/historical_data_processed_2024_stat.csv')
