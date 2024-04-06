@@ -12,4 +12,6 @@ As the Fed released FRB stress testing scenarios, we tried several deep learning
 
 <a href="_posts/2024-03-21-benchmark-linear-regression-for-stress-testing.md">A benchmark linear regression</a>
 
+<a href="_posts/2024-03-31-LSTM-based-sequence-to-sequence-model.md">An LSTM based sequence-to-sequence model for stress testing</a>
+
 More coming soon.
