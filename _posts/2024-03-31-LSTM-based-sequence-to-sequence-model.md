@@ -110,3 +110,62 @@ We made two plots for the loss function: one showing the full history, and the s
 
 We can see from the second chart that the validation loss is worsening after around 300 epochs which is a sign of overfitting. So we will retrain the model for only 300 epochs to avoid overfitting (i.e. rerun the code above with `n_epochs = 300`.)
 
+Below is the truncated output of the training with 300 epochs:
+
+```
+Epoch 0, train loss - 35.322, test loss - 8.618
+Epoch 1, train loss - 21.245, test loss - 1.655
+Epoch 2, train loss - 10.325, test loss - 0.876
+...
+Epoch 297, train loss - 0.23, test loss - 0.378
+Epoch 298, train loss - 0.266, test loss - 0.351
+Epoch 299, train loss - 0.233, test loss - 0.37
+```
+
+The training loss of the LSTM model is much better than the training loss of the linear regression model, 0.233 vs 1.165. However, the test loss is slightly worse, 0.37 vs 0.223. We may be able to improve the test loss by trying different batch sizes and learning rates. We may explore this in another post.
+
+Now let's check how well the model fits the training and test data:
+
+```Python3
+# Create one long array (train + test) and predict with it
+model.train(mode = False)
+x_all = create_fixed_length_sequences(d[x_columns], sequence_length = d.shape[0])[0]  # take the first and only tensor from the returned list
+y_all = model(x_all)
+y_all = y_all[0, :, 0].detach().numpy() # Convert (batch_size, sequence_size, x_size) tensor to an array of sequence_size
+
+# Plot the actual and prediction
+d_all = d[['date'] + y_columns].copy()
+d_all['pred'] = y_all
+d_all.plot(x = 'date', y = ['unemployment_rate', 'pred'], grid = True, rot = 45, xlabel = '', title = 'Model fit')
+plt.tight_layout()
+plt.show()
+```
+
+![LSTM model fit on training + test data](../Charts/LSTM_fit.png)
+
+The LSTM model has a much better fit than the linear model but is slightly underpredicting on the test set (the last 4 quarters.)
+
+Now let's see how the model performs in base and severely adverse scenarios:
+
+```Python3
+# Scenario prediction
+from predict_scenarios import * # can be found in Code directory
+
+# These are preprocessed scenario files (see part 1 blog)
+scenario_files = {'Base': '../Data/Base_data_processed_2024.csv',
+                  'SA': '../Data/SA_data_processed_2024.csv'}
+# Load scenario files into a dictionary
+d_scenarios = load_scenarios(scenario_files, start_date = '2023 Q4') # starting from an earlier date to warm up LSTM state
+# Predict with scenarios
+d_forecast = predict_scenarios(d_scenarios, x_columns, y_columns, model)
+# Plot each scenario
+plot_scenario_forecasts(d_forecast, y_label = 'Unemployment rate')
+```
+
+![LSTM base forecast](../Charts/LSTM_base_forecast.png)
+
+![LSTM SA forecast](../Charts/LSTM_sa_forecast.png)
+
+The base forecast is perhaps slightly better than the linear regression since the LSTM model prediction is around the FRB curve. The severely adverse forecast is much better than the linear regression since the LSTM model closely tracks the FRB curve and has a similar hump shape.
+
+Besides the LSTM-based model, we may try the GRU-based model which has a very similar structure to LSTM but is slightly simpler. The complete code for both LSTM and GRU models can be found in <a href="../Code">`Code`</a> directory of this repository.
