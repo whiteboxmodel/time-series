@@ -20,6 +20,16 @@ Not let's go over the steps to build the model:
 
 2. Positional encoding: The context vector built by the attention mechanism is based on a weighted average of past input projections. As such, it does not account for the order of the past inputs. The general approach in large language models (LLMs) is to add sine and cosine-based encoding vectors to the input vectors (embeddings) to address this deficiency.
 
-In our problem, since the length and dimensionality of the input sequences are much smaller, we will append a feature to the sequences to encode the position. Note that the one-hot encoded `q1`, `q2`, `q3`, and `q4` variables are not so efficient for positional encoding since the look-back period of the attention mechanism can be much longer than 4.
+   In our problem, since the length and dimensionality of the input sequences are much smaller, we will append a feature to the sequences to encode the position. Note that the one-hot encoded `q1`, `q2`, `q3`, and `q4` variables are not so efficient for positional encoding since the look-back period of the attention mechanism can be much longer than 4.
 
-3. Reduce the input dimensionality: The purpose of this optional step is to shrink down the dimensionality of the input vectors to a number with many multipliers. This helps select the number of attention heads since PyTorch requires the embedding size to be divisible by the number of attention heads.
+3. Reduce the input dimensionality: This optional step aims to reduce the dimensionality of the input vectors to a number with many multipliers. This provides more flexibility in selecting the number of attention heads since PyTorch requires the embedding size to be divisible by the number of attention heads.
+
+4. Multihead attention: This layer implements the attention mechanism. It takes three sets of inputs: queries, keys, and values (all of them are sequences) and returns a sequence of context vectors. We will set all three inputs to the same sequence from the previous step.
+
+   At each time step the attention layer can only attend to past observations as we forecast a time series. To enforce this, we need to pass an attention mask. The latter is a boolean matrix of `sequence_length x sequence_length` where for each `i`-th row the above diagonal elements are `True` indicating that they are masked (should not be attended).
+
+5. Residual connection: At this step, we add the input of the attention layer (from step 3) to the output of the attention layer. This operation is called residual connection. It ensures that the information in the input flows through the rest of the network in addition to the context vectors created by the attention layer. Note that the input and the output of the attention layer have the same dimensionality.
+
+6. Layer normalization: We apply layer normalization after the residual connection to normalize the data before processing further. Unlike batch normalization which normalizes each feature separately, the layer normalization normalizes the feature vector at each time step.
+
+7. Feed-forward: Finally, we use a feed-forward network to process the sequences from the previous step and output the final prediction. This block consists of a dropout step, a linear layer, non-linear activation (ReLU), and another linear layer which reduces the output dimensionality to one.
