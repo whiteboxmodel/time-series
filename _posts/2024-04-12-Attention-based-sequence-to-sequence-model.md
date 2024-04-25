@@ -20,7 +20,7 @@ Not let's go over the steps to build the model:
 
 2. Positional encoding: The context vector built by the attention mechanism is based on a weighted average of past input projections. As such, attention does not account for the order of the past inputs. The general approach in large language models (LLMs) is to add sine and cosine-based encoding vectors to the input vectors (embeddings) to address this deficiency.
 
-   In our problem, since the length and dimensionality of the input sequences are much smaller, we will append a feature to the sequences to encode the position. Note that the one-hot encoded `q1`, `q2`, `q3`, and `q4` variables are not so efficient for positional encoding since the look-back period of the attention mechanism can be much longer than 4.
+   However, in our problem, since the length and dimensionality of the input sequences are much smaller, we will append a feature to the sequences to encode the position. Note that the one-hot encoded `q1`, `q2`, `q3`, and `q4` variables are not so efficient for positional encoding since the look-back period of the attention mechanism can be much longer than 4.
 
 3. Reduce the input dimensionality: This optional step aims to reduce the dimensionality of the input vectors to a number with many multipliers. This provides more flexibility in selecting the number of attention heads since PyTorch requires the embedding size to be divisible by the number of attention heads.
 
@@ -47,7 +47,7 @@ from model_training import *
 from predict_scenarios import *
 ```
 
-Now let's define the class for the self-attention model:
+Now let's define the class for the self-attention model. We will start with the class constructor:
 
 ```Python3
 class SelfAttentionSequence(torch.nn.Module):
@@ -82,3 +82,46 @@ The positional encoding is a linear feature that starts from `0` and increases b
 We use a dictionary to store the attention masks since the input sequences can have different lengths. When a new sequence length is encountered, we will create the attention mask and store it in the dictionary to reuse next time.
 
 We apply weight normalization to one of the linear layers in the final feed-forward network. It normalizes the parameters of the layers which helps to regularize the model. Note that, unlike batch and layer normalization which work on the input sequence, parameter normalization works on the layer weights.
+
+Now let's implement the batch normalization step. This function is part of the `SelfAttentionSequence` class. Since the batch normalization works on the second dimension of the input tensor, we need to switch places of the second (`dim = 1`) and the third (`dim = 2`) dimensions, then switch them back after the batch normalization.
+
+```Python3
+# class SelfAttentionSequence(torch.nn.Module):
+    def normalize_input(self, sequence):
+        # sequence size is (batch_size, sequence_size, x_size)
+        x1 = sequence[:, :, :-4] # continuous variables
+        x2 = sequence[:, :, -4:] # one-hot encoded variables: q1, q2, q3, and q4
+        x1 = torch.permute(x1, (0, 2, 1)) # change to (batch_size, x1_size, sequence_size)
+        x1 = self.batch_norm(x1) # normalize the continuous variables
+        x1 = torch.permute(x1, (0, 2, 1)) # change back to (batch_size, sequence_size, x1_size)
+        x = torch.cat([x1, x2], dim = 2) # concatenate continuous and one-hot encoded variables
+        return x
+```
+
+The next code snippet implements a function for the positional encoding (again part of the `SelfAttentionSequence` class):
+
+```Python3
+# class SelfAttentionSequence(torch.nn.Module):
+    def add_positional_encoding(self, sequence):
+        # truncate the encoding to the given sequence length: (max_sequence_size, 1) -> (sequence_size, 1)
+        pe = self.pe[:sequence.shape[1], :]
+        # repeat for every batch: (sequence_size, 1) -> (batch_size, sequence_size, 1)
+        pe = pe.repeat(sequence.shape[0], 1, 1)
+        # concatenate the feature vector with the positional encoding: (batch_size, sequence_size, x_size) -> (batch_size, sequence_size, x_size + 1)
+        sequence_with_pe = torch.cat([sequence, pe], dim = 2)
+        return sequence_with_pe
+```
+
+Now let's implement a function that creates and stores attention masks (part of the `SelfAttentionSequence` class):
+
+```Python3
+# class SelfAttentionSequence(torch.nn.Module):
+    def get_attention_mask(self, sequence_length):
+        if sequence_length in self.attn_masks.keys():
+            return self.attn_masks[sequence_length] # the mask for sequence_length already created
+        attn_mask = torch.ones(sequence_length, sequence_length) # sequence_length x sequence_length matrix of ones
+        attn_mask = torch.tril(attn_mask) # zero out above the diagonal
+        attn_mask = attn_mask == 0.0 # convert to True/False, mask above diagonal which are future values
+        self.attn_masks[sequence_length] = attn_mask # store the mask for repetitive use
+        return attn_mask
+```
