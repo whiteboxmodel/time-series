@@ -20,7 +20,7 @@ Not let's go over the steps to build the model:
 
 2. Positional encoding: The context vector built by the attention mechanism is based on a weighted average of past input projections. As such, attention does not account for the order of the past inputs. The general approach in large language models (LLMs) is to add sine and cosine-based encoding vectors to the input vectors (embeddings) to address this deficiency.
 
-   However, in our problem, since the length and dimensionality of the input sequences are much smaller, we will append a feature to the sequences to encode the position. Note that the one-hot encoded `q1`, `q2`, `q3`, and `q4` variables are not so efficient for positional encoding since the look-back period of the attention mechanism can be much longer than 4.
+   However, in our problem, since the length and dimensionality of the input sequences are much smaller, we will append a feature to the sequences to encode the position. Note that the one-hot encoded `q1`, `q2`, `q3`, and `q4` variables are not so efficient for positional encoding since the look-back window of the attention mechanism can be much longer than 4.
 
 3. Reduce the input dimensionality: This optional step aims to reduce the dimensionality of the input vectors to a number with many multipliers. This provides more flexibility in selecting the number of attention heads since PyTorch requires the embedding size to be divisible by the number of attention heads.
 
@@ -30,9 +30,9 @@ Not let's go over the steps to build the model:
 
 5. Residual connection: At this step, we add the input of the attention layer (from step 3) to the output of the attention layer. This operation is called residual connection. It ensures that the information in the input flows through the rest of the network in addition to the context vectors created by the attention layer. Note that the input and the output of the attention layer have the same dimensionality.
 
-6. Layer normalization: We apply layer normalization after the residual connection to normalize the data before processing further. Unlike batch normalization which normalizes each feature separately, the layer normalization normalizes the feature vector at each time step.
-
 7. Feed-forward: Finally, we use a feed-forward network to process the sequences from the previous step and output the final prediction. This block consists of a dropout step, a linear layer, non-linear activation (ReLU), and another linear layer which reduces the output dimensionality to one.
+
+Traditional LLMs use layer normalization after the residual connection. In our experiments, we found that the model performs better without layer normalization. We left a couple of lines commented out in case the reader wants to experiment with the layer normalization.
 
 Let's start the coding by importing the required modules:
 
@@ -61,14 +61,14 @@ class SelfAttentionSequence(torch.nn.Module):
         self.initial_linear = torch.nn.Linear(in_features = x_size + 1, out_features = embed_size)
         # a dictionary to store and reuse the attention masks for each sequence length
         self.attn_masks = {}
-        # self-attention module
+        # self-attnetion module
         self.self_attn = torch.nn.MultiheadAttention(embed_dim = embed_size, num_heads = num_heads,
                                                      dropout = dropout_rate, batch_first = True,
                                                      add_bias_kv = False)
         # dropout to apply to the residual connection
         self.dropout = torch.nn.Dropout(p = dropout_rate)
-        # layer normalization
-        self.layer_norm = torch.nn.LayerNorm(embed_size)
+        # # layer normalization
+        # self.layer_norm = torch.nn.LayerNorm(embed_size)
         # feed-forward module
         self.dropout2 = torch.nn.Dropout(p = dropout_rate)
         self.linear2 = torch.nn.Linear(in_features = embed_size, out_features = embed_size)
@@ -77,7 +77,7 @@ class SelfAttentionSequence(torch.nn.Module):
         self.linear3 = torch.nn.Linear(in_features = embed_size, out_features = 1)
 ```
 
-The positional encoding is a linear feature that starts from `0` and increases by `1/50` at each time step. We will add it to the output of the batch normalization.
+The positional encoding is a linear feature that starts from `0` and increases by `1/50` at each time step. We will append it to the output of the batch normalization as an additional feature.
 
 We use a dictionary to store the attention masks since the input sequences can have different lengths. When a new sequence length is encountered, we will create the attention mask and store it in the dictionary to reuse next time.
 
@@ -125,3 +125,98 @@ Now let's implement a function that creates and stores attention masks (part of 
         self.attn_masks[sequence_length] = attn_mask # store the mask for repetitive use
         return attn_mask
 ```
+
+Finally, let's implement the forward pass which connects everything together:
+
+```Python3
+# class SelfAttentionSequence(torch.nn.Module):
+    def forward(self, sequence):
+        # sequence size is (batch_size, sequence_size, x_size)
+        x = self.normalize_input(sequence)
+        x = self.add_positional_encoding(x)
+        x = self.initial_linear(x) # map (batch_size, sequence_size, x_size) to (batch_size, sequence_size, embed_size)
+        x_prev = torch.clone(x) # save a copy for residual connection
+        # self attention
+        attn_mask = self.get_attention_mask(sequence_length = x.shape[1])
+        x, _ = self.self_attn(query = x, key = x, value = x,
+                              need_weights = False, attn_mask = attn_mask)
+        # residual connection
+        x = torch.add(x, self.dropout(x_prev))
+        # # layer normalization
+        # x = self.layer_norm(x)
+        # feed-forward
+        x = self.dropout2(x)
+        x = self.linear2(x)
+        x = self.non_linear(x)
+        out = self.linear3(x) # final layer to create output with a shape (batch_size, sequence_size, 1)
+        return out
+```
+
+Now let's train and run the model. We will start with data preparation:
+
+```Python3
+d = pd.read_csv('../Data/historical_data_processed_2024.csv')
+
+x_columns = ['real_disp_inc_growth', 'real_gdp_growth', 'cpi_inflation_rate',
+             'spread_treasury_10y_over_3m', 'spread_treasury_5y_over_3m',
+             'treasury_3m_rate_diff', 'treasury_5y_rate_diff', 'treasury_10y_rate_diff',
+             'bbb_rate_diff', 'mortgage_rate_diff', 'vix_diff',
+             'dwcf_growth', 'hpi_growth', 'crei_growth',
+             'q1', 'q2', 'q3', 'q4']
+y_columns = ['unemployment_rate']
+x_size = len(x_columns)
+d_train = d.iloc[:-4]
+d_test = d.iloc[-4:] # last 4 quarters are for testing
+
+set_all_seeds(1) # ensure the prepared data and overall results are reproducible
+xy_train = create_batched_sequences(d_train[x_columns], d_train[y_columns],
+                                    sequence_lengths = [4, 6, 8, 12, 16], batch_size = 8)
+xy_test = create_batched_sequences(d_test[x_columns], d_test[y_columns],
+                                   sequence_lengths = [4], batch_size = 1)
+```
+
+Since our data is short, we augmented training data by creating different length sequences: 4, 6, 8, 12, and 16.
+
+Next, we create the model, loss, and optimizer objects and train the model:
+
+```Python3
+model = SelfAttentionSequence(x_size, embed_size = 12, num_heads = 4, dropout_rate = 0.1)
+loss_fn = torch.nn.MSELoss() # Mean Squared Error (MSE)
+optimizer = torch.optim.Adam(model.parameters(), lr = 0.001)
+n_epochs = 400
+
+train_losses, test_losses = train_model(xy_train, xy_test, model, loss_fn, optimizer, n_epochs)
+plot_loss_history(train_losses, test_losses, start_epoch = 50)
+```
+
+Partial output of the training:
+
+```
+Epoch 0, train loss - 27.307, test loss - 6.39
+Epoch 1, train loss - 3.951, test loss - 0.26
+Epoch 2, train loss - 2.434, test loss - 0.442
+...
+Epoch 397, train loss - 0.285, test loss - 0.16
+Epoch 398, train loss - 0.264, test loss - 0.219
+Epoch 399, train loss - 0.27, test loss - 0.188
+```
+
+Below is the plot for the training and validation losses starting from the 50th epoch:
+
+![Training and validation loss for the self-attention model](../Charts/SelfAttention_training_and_validation_loss_50_400.png)
+
+Now let's see how the model prediction looks on training and testing data. We will use a sliding window of length 4 for prediction to limit the attention window of the model to 4.
+
+```Python3
+model.train(mode = False)
+y_all = predict_with_sliding_window(model, d, x_columns, sequence_length = 4) # in predict_scenarios module
+d_all = d[['date'] + y_columns].copy()
+d_all['pred'] = y_all.detach().numpy()
+
+# Plot the actual and prediction
+d_all.plot(x = 'date', y = ['unemployment_rate', 'pred'], grid = True, rot = 45, xlabel = '', title = 'Model fit')
+plt.tight_layout()
+plt.show()
+```
+
+![Self-attention model fit on training + test data](../Charts/SelfAttention_fit.png)
