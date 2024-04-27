@@ -4,13 +4,13 @@ categories: [Stress-testing, time-series, attention, sequence-to-sequence, time-
 date: 2024-04-12
 ---
 
-In the previous post, we developed an <a href="2024-03-31-LSTM-based-sequence-to-sequence-model.md">LSTM-based model</a> which performed remarkably well compared to the benchmark <a href="2024-03-21-benchmark-linear-regression-for-stress-testing.md">linear model</a>. Now let's build an attention-based time-series model to see if we can further improve the performance. As before, we will predict the unemployment rate given all other variables.
+In the previous post, we developed an <a href="2024-03-31-LSTM-based-sequence-to-sequence-model.md">LSTM-based model</a> which performed remarkably well compared to the benchmark <a href="2024-03-21-benchmark-linear-regression-for-stress-testing.md">linear model</a>. Now let's build an attention-based time-series model to see if we can further improve the performance. As before, we will predict the unemployment rate given all other macroeconomic variables.
+
+The attention model has a special mechanism to build a context vector which represents the relevant information to predict the next word. This idea is conceptually similar to the hidden state of the LSTM (or GRU) cell. However, the context vector is more flexible since it can directly consume information from a wide window of data points, while LSTM can only use the current input data point and the previous hidden state.
 
 The idea of using the attention mechanism for this problem is inspired by language translation models. At a very high level, a translation model (such as from English to Chinese) converts words both in source and target languages into high-dimensional vectors called embeddings, builds a context vector by comparing the projections of the target embeddings with the projections of the source embeddings, then predicts the next word in the target language using the context vector.
 
-The context vector represents the relevant information to predict the next word. This idea is conceptually similar to the hidden state of the LSTM (or GRU) cell. However, the context vector is more flexible since it can directly consume information from a much wider set of data points, while LSTM can use only the current input data point and the previous hidden state.
-
-In our problem, we are given a time series of $x_t$ vectors representing macroeconomic variables at each time step $t$ and need to predict a one-dimensional time series $y_t$ of the unemployment rate. Since $y_t$ is one-dimensional, it doesn't make sense to take projections of it (and compare them to $x_t$ projections.) Instead, we will take $x_t$ projections and compare them with projections of past periods $x_{t - 1}$, $x_{t - 2}$, etc. to build the context vector. The latter represents the information from the current and past periods that can be helpful to predict $y_t$.
+In our problem, we are given a time series of $x_t$ vectors representing macroeconomic variables at each time step $t$ and need to predict a one-dimensional time series $y_t$ of the unemployment rate. Since $y_t$ is one-dimensional, it doesn't make sense to take projections of it (and compare them to $x_t$ projections). Instead, we will take $x_t$ projections and compare them with projections of past periods $x_{t - 1}$, $x_{t - 2}$, etc. to build the context vector. The latter represents the useful information from the current and past periods to predict $y_t$.
 
 When we compare $x_t$ projections with its past projections, this type of attention is called self-attention. Note that in language translation models it is usual to compare against both past and future values to build a better context. However, we can only look back in time series to avoid data leaks.
 
@@ -22,7 +22,7 @@ Not let's go over the steps to build the model:
 
    However, in our problem, since the length and dimensionality of the input sequences are much smaller, we will append a feature to the sequences to encode the position. Note that the one-hot encoded `q1`, `q2`, `q3`, and `q4` variables are not so efficient for positional encoding since the look-back window of the attention mechanism can be much longer than 4.
 
-3. Reduce the input dimensionality: This optional step aims to reduce the dimensionality of the input vectors to a number with many multipliers. This provides more flexibility in selecting the number of attention heads since PyTorch requires the embedding size to be divisible by the number of attention heads.
+3. Reduce the input dimensionality: This optional but convenient step aims to reduce the dimensionality of the input vectors to a number with many multipliers. This provides more flexibility in selecting the number of attention heads since PyTorch requires the embedding size to be divisible by the number of attention heads.
 
 4. Multihead attention: This layer implements the attention mechanism. It takes three sequences as inputs: queries, keys, and values, then returns a sequence of context vectors. We will set all three inputs to the same sequence obtained from the previous step.
 
@@ -77,13 +77,13 @@ class SelfAttentionSequence(torch.nn.Module):
         self.linear3 = torch.nn.Linear(in_features = embed_size, out_features = 1)
 ```
 
-The positional encoding is a linear feature that starts from `0` and increases by `1/50` at each time step. We will append it to the output of the batch normalization as an additional feature.
+The positional encoding (`self.pe`) is a linear feature that starts from `0` and increases by `1/50` at each time step. We will append it to the output of the batch normalization as an additional feature.
 
 We use a dictionary to store the attention masks since the input sequences can have different lengths. When a new sequence length is encountered, we will create the attention mask and store it in the dictionary to reuse next time.
 
 We apply weight normalization to one of the linear layers in the final feed-forward network. It normalizes the parameters of the layers which helps to regularize the model. Note that, unlike batch and layer normalization which work on the input sequence, parameter normalization works on the layer weights.
 
-Now let's implement the batch normalization step. This function is part of the `SelfAttentionSequence` class. Since the batch normalization works on the second dimension of the input tensor, we need to switch places of the second (`dim = 1`) and the third (`dim = 2`) dimensions, then switch them back after the batch normalization.
+Now let's implement the batch normalization step. This function is part of the `SelfAttentionSequence` class. Since the batch normalization works on the second dimension of the input tensor, we need to switch places of the second (`dim = 1`) and the third (`dim = 2`) dimensions, then switch them back after the batch normalization (without the switch it would normalize across features for each time step, while we need to normalize each feature across all time steps).
 
 ```Python3
 # class SelfAttentionSequence(torch.nn.Module):
@@ -112,7 +112,7 @@ The next code snippet implements a function for the positional encoding (again p
         return sequence_with_pe
 ```
 
-Now let's implement a function that creates and stores attention masks (part of the `SelfAttentionSequence` class):
+Now let's implement a function that creates attention masks and stores them in the dictionary (part of the `SelfAttentionSequence` class):
 
 ```Python3
 # class SelfAttentionSequence(torch.nn.Module):
@@ -134,7 +134,7 @@ Finally, let's implement the forward pass which connects everything together:
         # sequence size is (batch_size, sequence_size, x_size)
         x = self.normalize_input(sequence)
         x = self.add_positional_encoding(x)
-        x = self.initial_linear(x) # map (batch_size, sequence_size, x_size) to (batch_size, sequence_size, embed_size)
+        x = self.initial_linear(x) # map (batch_size, sequence_size, x_size + 1) to (batch_size, sequence_size, embed_size)
         x_prev = torch.clone(x) # save a copy for residual connection
         # self attention
         attn_mask = self.get_attention_mask(sequence_length = x.shape[1])
@@ -152,7 +152,7 @@ Finally, let's implement the forward pass which connects everything together:
         return out
 ```
 
-Now let's train and run the model. We will start with data preparation:
+Now let's train and run the model. We will start with data preparation. Since our data is short, we augment the training data with multiple length sequences: 4, 6, 8, 12, and 16.
 
 ```Python3
 d = pd.read_csv('../Data/historical_data_processed_2024.csv')
@@ -174,8 +174,6 @@ xy_train = create_batched_sequences(d_train[x_columns], d_train[y_columns],
 xy_test = create_batched_sequences(d_test[x_columns], d_test[y_columns],
                                    sequence_lengths = [4], batch_size = 1)
 ```
-
-Since our data is short, we augmented training data by creating multiple length sequences: 4, 6, 8, 12, and 16.
 
 Next, we create the model, loss, and optimizer objects, then train the model:
 
@@ -243,4 +241,4 @@ plot_scenario_forecasts(d_forecast, y_label = 'Unemployment rate')
 
 The shape of the base forecast for the self-attention-based model does not follow the shape of the FRB base forecast. On the other hand, the shape of the severely adverse forecast is overall close to the shape of the FRB scenario.
 
-In the comparison of forecasts for the LSTM vs self-attention models, there is no clear winner. Both produced a somewhat noisy forecast in base scenario and a resonable forecast in severely adverse scenario. However, from the model structure perspective, LSTM is a simpler model, while self-attention model has more complex structure. Also, the hyperparameter space where the self-attention model converges and produces a resonable forecast is narrow which makes it harder to train.
+There isn't a clear winner in the scenario forecast comparison for the LSTM vs self-attention model. Both produced a somewhat noisy forecast in the base scenario and a reasonable forecast in the severely adverse scenario. However, from the model structure perspective, LSTM is a simpler model, while the self-attention model has a more complex structure. Consequently, the self-attention model is harder to train. Also, we found that its hyperparameter space that produces a reasonable forecast is narrow.
