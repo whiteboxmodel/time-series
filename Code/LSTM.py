@@ -22,9 +22,9 @@ class LSTMSequence(torch.nn.Module):
         # sequence size is (batch_size, sequence_size, x_size)
         x1 = sequence[:, :, :-4] # continuous variables
         x2 = sequence[:, :, -4:] # one-hot encoded variables: q1, q2, q3, and q4
-        x1 = torch.permute(x1, (0, 2, 1)) # change to (batch_size, x_size, sequence_size)
+        x1 = torch.permute(x1, (0, 2, 1)) # change to (batch_size, x1_size, sequence_size)
         x1 = self.batch_norm(x1) # normalize the continuous variables
-        x1 = torch.permute(x1, (0, 2, 1)) # change back to (batch_size, sequence_size, x_size)
+        x1 = torch.permute(x1, (0, 2, 1)) # change back to (batch_size, sequence_size, x1_size)
         x = torch.cat([x1, x2], dim = 2) # concatenate continuous and one-hot encoded variables
         x, _ = self.lstm(x) # use only LSTM ourput, ignore the retured state
         x = self.dropout(x) # apply dropout
