@@ -175,9 +175,9 @@ xy_test = create_batched_sequences(d_test[x_columns], d_test[y_columns],
                                    sequence_lengths = [4], batch_size = 1)
 ```
 
-Since our data is short, we augmented training data by creating different length sequences: 4, 6, 8, 12, and 16.
+Since our data is short, we augmented training data by creating multiple length sequences: 4, 6, 8, 12, and 16.
 
-Next, we create the model, loss, and optimizer objects and train the model:
+Next, we create the model, loss, and optimizer objects, then train the model:
 
 ```Python3
 model = SelfAttentionSequence(x_size, embed_size = 12, num_heads = 4, dropout_rate = 0.1)
@@ -220,3 +220,27 @@ plt.show()
 ```
 
 ![Self-attention model fit on training + test data](../Charts/SelfAttention_fit.png)
+
+From the output of the model training, we can see that the training MSE is 0.27 and the test MSE is 0.188. For <a href="2024-03-31-LSTM-based-sequence-to-sequence-model.md">LSTM model</a>, the training and test MSEs were 0.233 and 0.37 respectively. Therefore, on the test set self-attention model's MSE is lower than the LSTM model's MSE, while the LSTM training MSE is slightly better (although for training it is not an apple-to-apple comparison since the self-attention model has more sequences in the training set).
+
+Finally, let's see the forecast for the base and severely adverse scenarios.
+
+```Python3
+# These are preprocessed scenario files (see part 1 blog)
+scenario_files = {'Base': '../Data/Base_data_processed_2024.csv',
+                  'SA': '../Data/SA_data_processed_2024.csv'}
+# Load scenario files into a dictionary
+d_scenarios = load_scenarios(scenario_files, start_date = '2023 Q1') # starting from an earlier date for look back
+# Predict with scenarios
+d_forecast = predict_scenarios_with_sliding_window(model, d_scenarios, x_columns, y_columns, sequence_length = 16)
+# Plot each scenario
+plot_scenario_forecasts(d_forecast, y_label = 'Unemployment rate')
+```
+
+![Self-attention base forecast](../Charts/SelfAttention_base_forecast.png)
+
+![Self-attention SA forecast](../Charts/SelfAttention_sa_forecast.png)
+
+The shape of the base forecast for the self-attention-based model does not follow the shape of the FRB base forecast. On the other hand, the shape of the severely adverse forecast is overall close to the shape of the FRB scenario.
+
+In the comparison of forecasts for the LSTM vs self-attention models, there is no clear winner. Both produced a somewhat noisy forecast in base scenario and a resonable forecast in severely adverse scenario. However, from the model structure perspective, LSTM is a simpler model, while self-attention model has more complex structure. Also, the hyperparameter space where the self-attention model converges and produces a resonable forecast is narrow which makes it harder to train.
