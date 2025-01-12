@@ -14,7 +14,7 @@ As the Fed released FRB stress testing scenarios, we tried several deep learning
 
 <a href="_posts/2024-03-31-LSTM-based-sequence-to-sequence-model.md">An LSTM based sequence-to-sequence model for stress testing</a>
 
-<a href="_posts/22024-04-12-Attention-based-sequence-to-sequence-model.md">An attention based time-series model for stress testing</a>
+<a href="_posts/2024-04-12-Attention-based-sequence-to-sequence-model.md">An attention based time-series model for stress testing</a>
 
 More coming soon.
 
